@@ -44,7 +44,7 @@ dpkg_src(
 dpkg_src(
     name = "debian_stretch_security",
     package_prefix = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/",
-    packages_gz_url = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/dists/stretch/updates/main/binary-amd64/Packages.gz",
+    packages_url = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/dists/stretch/updates/main/binary-amd64/Packages.gz",
     sha256 = "046a277f34b07c723f363f132eb6cb3485f25170ae426bc3ef146968b259f585",
 )
 
@@ -363,6 +363,6 @@ dpkg_list(
 dpkg_src(
     name = "debian10_security",
     package_prefix = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/",
-    packages_gz_url = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/dists/buster/updates/main/binary-amd64/Packages.gz",
+    packages_url = "https://snapshot.debian.org/archive/debian-security/20191230T212302Z/dists/buster/updates/main/binary-amd64/Packages.gz",
     sha256 = "20299ed97c71f26e6c34d948a358e3ac9bb9f4709a90b6f38e6094b688f5270b",
 )

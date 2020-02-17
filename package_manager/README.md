@@ -17,7 +17,7 @@ dpkg_src(
 )
 ```
 
-You can also set up the package source using the full url for the `Packages.gz` file. The `package_prefix` is used to
+You can also set up the package source using the full url for the `Packages.gz` (or `Packages`/`Packages.xz`) file. The `package_prefix` is used to
 prepend to the value of `Filename` in the `Packages.gz` file. In the following example, if the value of `Filename` is
 `pool/jdk1.8/b/bazel/bazel_0.7.0_amd64.deb`, then the `.deb` artifact will later be downloaded from
 `http://storage.googleapis.com/bazel-apt/pool/jdk1.8/b/bazel/bazel_0.7.0_amd64.deb`.
@@ -25,7 +25,7 @@ prepend to the value of `Filename` in the `Packages.gz` file. In the following e
 ```python
 dpkg_src(
     name = "bazel_apt",
-    packages_gz_url = "http://storage.googleapis.com/bazel-apt/dists/stable/jdk1.8/binary-amd64/Packages.gz",
+    packages_url = "http://storage.googleapis.com/bazel-apt/dists/stable/jdk1.8/binary-amd64/Packages.gz",
     package_prefix = "http://storage.googleapis.com/bazel-apt/",
     sha256 = "0fc4c6988ebf24705cfab0050cb5ad58e5b2aeb0e8cfb8921898a1809042416c",
 )
@@ -76,14 +76,14 @@ container_image(
 ## dpkg_src
 
 ```python
-dpkg_src(name, url, arch, distro, snapshot, packages_gz_url, package_prefix, sha256, dpkg_parser)
+dpkg_src(name, url, arch, distro, snapshot, packages_url, packages_gz_url, package_prefix, sha256, dpkg_parser)
 ```
 
-A rule that downloads a `Packages.gz` snapshot file and parses it into a readable format for `dpkg_list`.
+A rule that downloads a `Packages.xz` snapshot file and parses it into a readable format for `dpkg_list`.
 It supports snapshots from [http://snapshot.debian.org/](http://snapshot.debian.org/). (You can find out more about the format and sources available there.)
-It also supports retrieving `Packages.gz` file from a given full url.
+It also supports retrieving a `Packages`/`Packages.gz`/`Packages.xz` file from a given full url.
 
-Either a set of {`url`, `arch`, `distro`, `snapshot`} or a set of {`packages_gz_url`, `package_prefix`} must be set.
+Either a set of {`url`, `arch`, `distro`, `snapshot`} or a set of {`packages_url`, `package_prefix`} must be set.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -131,27 +131,34 @@ Either a set of {`url`, `arch`, `distro`, `snapshot`} or a set of {`packages_gz_
       </td>
     </tr>
     <tr>
+      <td><code>packages_url</code></td>
+      <td>
+        <p><code>the full url for the Packages file. Supports uncompressed, gzip-compressed (.gz) and LZMA-compressed (.xz) files.</code></p>
+      </td>
+    </tr>
+    <tr>
       <td><code>packages_gz_url</code></td>
       <td>
         <p><code>the full url for the Packages.gz file</code></p>
+        <p>Deprecated; Please use <code>packages_url</code> instead.</p>
       </td>
     </tr>
     <tr>
       <td><code>package_prefix</code></td>
       <td>
-        <p><code>the prefix to prepend to the value of Filename in the Packages.gz file</code></p>
+        <p><code>the prefix to prepend to the value of Filename in the Packages file</code></p>
       </td>
     </tr>
     <tr>
       <td><code>sha256</code></td>
       <td>
-        <p><code>the sha256 of the Packages.gz file, required</code></p>
+        <p><code>the sha256 checksum to validate for the Packages file given in packages_url, required</code></p>
       </td>
     </tr>
     <tr>
       <td><code>dpkg_parser</code></td>
       <td>
-        <p><code>A binary that translates a Packages.gz file into a format readable by dpkg_list, required</code></p>
+        <p><code>A binary that translates a Packages file into a format readable by dpkg_list, required</code></p>
       </td>
     </tr>
   </tbody>

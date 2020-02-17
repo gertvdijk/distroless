@@ -17,6 +17,11 @@ import gzip
 import json
 import os
 import io
+try:
+    import lzma
+except ImportError:
+    # Fallback for Python 2
+    from backports import lzma
 
 from six.moves import urllib
 
@@ -40,14 +45,14 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("--package-files", action='store',
-                    help='A list of Packages.gz files to use')
+                    help='A list of Packages files to use')
 parser.add_argument("--packages", action='store',
                     help='A comma delimited list of packages to search for and download')
 parser.add_argument("--workspace-name", action='store',
                     help='The name of the current bazel workspace')
 
 parser.add_argument("--download-and-extract-only", action='store',
-                    help='If True, download Packages.gz and make urls absolute from mirror url')
+                    help='If True, download Packages file and make urls absolute from mirror url')
 parser.add_argument("--mirror-url", action='store',
                     help='The base url for the package list mirror')
 parser.add_argument("--arch", action='store',
@@ -57,11 +62,11 @@ parser.add_argument("--distro", action='store',
 parser.add_argument("--snapshot", action='store',
                     help='The snapshot date to download')
 parser.add_argument("--sha256", action='store',
-                    help='The sha256 checksum to validate for the Packages.gz file')
-parser.add_argument("--packages-gz-url", action='store',
-                    help='The full url for the Packages.gz file')
+                    help='The sha256 checksum to validate for the Packages file given in --packages-url')
+parser.add_argument("--packages-url", action='store',
+                    help='The full url for the Packages{,.gz,.xz} file')
 parser.add_argument("--package-prefix", action='store',
-                    help='The prefix to prepend to the value of Filename key in the Packages.gz file.')
+                    help='The prefix to prepend to the value of Filename key in the Packages{,.gz,.xz} file.')
 
 
 def main():
@@ -69,7 +74,7 @@ def main():
     args = parser.parse_args()
     if args.download_and_extract_only:
         download_package_list(args.mirror_url,args.distro, args.arch, args.snapshot, args.sha256,
-                              args.packages_gz_url, args.package_prefix)
+                              args.packages_url, args.package_prefix)
         util.build_os_release_tar(args.distro, OS_RELEASE_FILE_NAME, OS_RELEASE_PATH, OS_RELEASE_TAR_FILE_NAME)
     else:
         download_dpkg(args.package_files, args.packages, args.workspace_name)
@@ -128,12 +133,13 @@ def download_dpkg(package_files, packages, workspace_name):
         f.write("packages = " + json.dumps(package_to_rule_map))
         f.write("\nversions = " + json.dumps(package_to_version_map))
 
-def download_package_list(mirror_url, distro, arch, snapshot, sha256, packages_gz_url, package_prefix):
+def download_package_list(mirror_url, distro, arch, snapshot, sha256, packages_url, package_prefix):
     """Downloads a debian package list, expands the relative urls,
     and saves the metadata as a json file
 
-    A debian package list is a gzipped, newline delimited, colon separated
-    file with metadata about all the packages available in that repository.
+    A debian package list is a newline delimited, colon separated file with
+    metadata about all the packages available in that repository and is
+    optionally compressed (e.g. LZMA/.xz, GZIP/.gz).
     Multiline keys are indented with spaces.
 
     An example package looks like:
@@ -159,14 +165,14 @@ SHA256: 52ec3ac93cf8ba038fbcefe1e78f26ca1d59356cdc95e60f987c3f52b3f5e7ef
 
     """
 
-    if bool(packages_gz_url) != bool(package_prefix):
-        raise Exception("packages_gz_url and package_prefix must be specified or skipped at the same time.")
+    if bool(packages_url) != bool(package_prefix):
+        raise Exception("packages_url and package_prefix must be specified or skipped at the same time.")
 
-    if (not packages_gz_url) and (not mirror_url or not snapshot or not distro or not arch):
-        raise Exception("If packages_gz_url is not specified, all of mirror_url, snapshot, "
+    if (not packages_url) and (not mirror_url or not snapshot or not distro or not arch):
+        raise Exception("If packages_url is not specified, all of mirror_url, snapshot, "
                         "distro and arch must be specified.")
 
-    url = packages_gz_url
+    url = packages_url
     if not url:
         url = "%s/debian/%s/dists/%s/main/binary-%s/Packages.gz" % (
             mirror_url,
@@ -176,13 +182,20 @@ SHA256: 52ec3ac93cf8ba038fbcefe1e78f26ca1d59356cdc95e60f987c3f52b3f5e7ef
         )
 
     buf = urllib.request.urlopen(url)
-    with io.open("Packages.gz", 'wb') as f:
+    with io.open("Packages", 'wb') as f:
         f.write(buf.read())
-    actual_sha256 = util.sha256_checksum("Packages.gz")
+    actual_sha256 = util.sha256_checksum("Packages")
     if sha256 != actual_sha256:
-        raise Exception("sha256 of Packages.gz don't match: Expected: %s, Actual:%s" %(sha256, actual_sha256))
-    with gzip.open("Packages.gz", 'rb') as f:
-        data = f.read()
+        raise Exception("sha256 of Packages file doesn't match: Expected: %s, Actual:%s" %(sha256, actual_sha256))
+    if url.endswith(".gz"):
+        with gzip.open("Packages", 'rb') as f:
+            data = f.read()
+    elif url.endswith(".xz"):
+        with lzma.open("Packages", 'rb') as f:
+            data = f.read()
+    else:
+        with io.open("Packages", 'rb') as f:
+            data = f.read()
     metadata = parse_package_metadata(data, mirror_url, snapshot, package_prefix)
     with open(PACKAGES_FILE_NAME, 'w') as f:
         json.dump(metadata, f)
